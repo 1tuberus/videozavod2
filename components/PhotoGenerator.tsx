@@ -50,6 +50,12 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
     }
   }, [photoModels, model]);
 
+  // Total cost (для image — за 1 фото, n=1 в текущем UI)
+  const totalTokens = useMemo(() => {
+    if (!selectedEntry) return 0;
+    return selectedEntry.pricing?.tokens ?? 0;
+  }, [selectedEntry]);
+
   const aspectOptions: string[] = useMemo(() => {
     const opts = selectedEntry?.params?.aspect_ratio?.options;
     return Array.isArray(opts) && opts.length ? (opts as string[]) : ['9:16','16:9','1:1','3:4','4:3'];
@@ -113,7 +119,7 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
         {/* Model Selection (dynamic from /api/catalog) */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-gray-300 ml-1">
-            Модель {selectedEntry ? `· ${selectedEntry.pricing?.tokens ?? '?'} токенов / ${selectedEntry.pricing?.unit ?? 'image'}` : ''}
+            Модель {selectedEntry ? `· ${totalTokens} токенов / фото` : ''}
           </label>
           {catalogLoading && !photoModels.length ? (
             <div className="text-xs text-gray-500 px-1">Загрузка каталога…</div>
@@ -263,7 +269,7 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
         <div className="border-t border-white/5 pt-4">
             <div className="flex justify-between items-center mb-4">
                 <span className="text-xs text-gray-500">
-                  Стоимость: <span className="text-white font-bold">~{selectedEntry?.pricing?.tokens ?? '?'} токенов</span>
+                  Стоимость: <span className="text-white font-bold">~{totalTokens} токенов</span>
                   {selectedEntry && <span className="text-gray-600 ml-2">· {selectedEntry.provider_hint}</span>}
                 </span>
             </div>

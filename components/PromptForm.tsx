@@ -144,6 +144,17 @@ const PromptForm: React.FC<PromptFormProps> = ({
     }
   }, [videoModels, model]);
 
+  // Total cost for this generation (per-unit × duration). Default video duration = 8s.
+  const VIDEO_DEFAULT_DURATION = 8;
+  const totalTokens = useMemo(() => {
+    if (!selectedEntry) return 0;
+    const perUnit = selectedEntry.pricing?.tokens ?? 0;
+    const unit = selectedEntry.pricing?.unit;
+    if (unit === 'sec') return perUnit * VIDEO_DEFAULT_DURATION;
+    if (unit === 'img') return perUnit;
+    return perUnit;
+  }, [selectedEntry]);
+
   // Aspect/resolution options derived from selected model's params (capabilities-driven)
   const aspectOptions: string[] = useMemo(() => {
     const opts = selectedEntry?.params?.aspect_ratio?.options;
@@ -332,7 +343,7 @@ const PromptForm: React.FC<PromptFormProps> = ({
       {/* 1. Model Selection (dynamic from /api/catalog) */}
       <div className="space-y-3">
         <label className="text-gray-400 text-sm font-medium ml-1">
-          AI модель {selectedEntry ? `· ${selectedEntry.pricing?.tokens ?? '?'} токенов / ${selectedEntry.pricing?.unit ?? 'job'}` : ''}
+          AI модель {selectedEntry ? `· ${selectedEntry.pricing?.tokens ?? '?'} ток./${selectedEntry.pricing?.unit ?? 'job'} · итого ~${totalTokens} ток. за ${VIDEO_DEFAULT_DURATION} сек` : ''}
         </label>
         {catalogLoading && !videoModels.length ? (
           <div className="text-xs text-gray-500 px-1">Загрузка каталога…</div>
@@ -504,8 +515,8 @@ const PromptForm: React.FC<PromptFormProps> = ({
         >
           <SparklesIcon className="w-5 h-5 group-hover:animate-pulse" />
           Создать видео
-          {selectedEntry?.pricing?.tokens && (
-            <span className="text-white/60 font-normal text-sm ml-1">(~{selectedEntry.pricing.tokens} ток./{selectedEntry.pricing.unit || 'job'})</span>
+          {totalTokens > 0 && (
+            <span className="text-white/60 font-normal text-sm ml-1">(~{totalTokens} токенов)</span>
           )}
         </button>
         {selectedEntry && (
