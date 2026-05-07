@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { Me, logout } from "../services/authClient";
+import Pricing from "./Pricing";
 
 const APP_VERSION = "v2026.05.07.1";
 const SUPPORT_TG = "https://t.me/evotop_support";
@@ -24,6 +25,7 @@ interface Props {
   onLogout: () => void;
   onOpenAdmin: () => void;
   onOpenHistory: () => void;
+  onOpenPricing: () => void;
   onLogin: () => void;
 }
 
@@ -91,28 +93,33 @@ const ProfileView: React.FC<{ me: Me | null }> = ({ me }) => (
   </div>
 );
 
-const StudioView: React.FC<{ me: Me | null; onOpenAdmin: () => void }> = ({ me, onOpenAdmin }) => {
+const StudioView: React.FC<{ me: Me | null; onOpenAdmin: () => void; onOpenPricing: () => void }> = ({ me, onOpenAdmin, onOpenPricing }) => {
   const isStaff = me && (me.role === "admin" || me.role === "owner");
   return (
     <div className="space-y-3 text-sm">
       <div className="text-base font-semibold">Студия</div>
       <div className="text-xs text-gray-400">
-        Управление подписками, балансом и контентом.
+        Управление подпиской, балансом и контентом.
       </div>
-      {isStaff ? (
-        <button onClick={onOpenAdmin} className="w-full px-3 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-sm font-semibold">
+      {me && (
+        <div className="rounded-lg bg-white/5 p-3 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] text-gray-500 uppercase">Баланс</div>
+            <div className="text-xl font-semibold">⚡ {(me.balance_tokens || 0).toLocaleString("ru")} токенов</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] text-gray-500 uppercase">Тариф</div>
+            <div className="text-sm capitalize">{me.current_plan || "Free"}</div>
+          </div>
+        </div>
+      )}
+      <button onClick={onOpenPricing} className="w-full px-3 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-sm font-semibold">
+        💎 Купить токены
+      </button>
+      {isStaff && (
+        <button onClick={onOpenAdmin} className="w-full px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium border border-white/10">
           ⚙ Админ-панель
         </button>
-      ) : (
-        <div className="rounded-lg bg-white/5 p-3 space-y-2">
-          <div className="text-sm">Тариф: <b>Free</b></div>
-          <div className="text-xs text-gray-400">
-            Хранение медиа: 60 дней. Подписка снимет лимит и даст ежемесячный кредит.
-          </div>
-          <button disabled className="w-full px-3 py-2 rounded bg-indigo-600/40 text-gray-400 text-xs cursor-not-allowed">
-            Купить подписку (скоро)
-          </button>
-        </div>
       )}
     </div>
   );
@@ -172,7 +179,7 @@ const SupportView: React.FC = () => (
 
 // ───── main panel ────────────────────────────────────────────────────────────
 
-const UserMenu: React.FC<Props> = ({ me, onClose, onLogout, onOpenAdmin, onOpenHistory, onLogin }) => {
+const UserMenu: React.FC<Props> = ({ me, onClose, onLogout, onOpenAdmin, onOpenHistory, onOpenPricing, onLogin }) => {
   const [view, setView] = useState<View>("root");
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("vz2_lang") as Lang) || "ru");
   const plan = planLabel(me);
@@ -267,7 +274,7 @@ const UserMenu: React.FC<Props> = ({ me, onClose, onLogout, onOpenAdmin, onOpenH
           )}
 
           {view === "profile"  && <ProfileView  me={me} />}
-          {view === "studio"   && <StudioView   me={me} onOpenAdmin={() => { onOpenAdmin(); onClose(); }} />}
+          {view === "studio"   && <StudioView   me={me} onOpenAdmin={() => { onOpenAdmin(); onClose(); }} onOpenPricing={() => { onOpenPricing(); onClose(); }} />}
           {view === "referral" && <ReferralView me={me} />}
           {view === "support"  && <SupportView />}
         </div>

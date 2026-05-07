@@ -6,6 +6,8 @@ export type Role = "owner" | "admin" | "user";
 export interface Me {
   id: string; email: string; role: Role;
   balance_cents: number;
+  balance_tokens: number;
+  current_plan?: string | null;
   banned: boolean; ban_reason?: string | null; ban_expires_at?: number | null;
   created_at: number;
 }

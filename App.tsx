@@ -20,6 +20,8 @@ import ConnectionsTab from './components/ConnectionsTab';
 import AdminPanel from './components/AdminPanel';
 import LoginModal from './components/LoginModal';
 import UserMenu from './components/UserMenu';
+import Pricing from './components/Pricing';
+import { fetchBalance } from './services/billingClient';
 import {fetchMe, logout, Me} from './services/authClient';
 import {generateVideo, generateImage} from './services/geminiService';
 import {priceVideo} from './services/hubClient';
@@ -108,6 +110,13 @@ const App: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
+  const refreshBalance = async () => {
+    try {
+      const b = await fetchBalance();
+      setMe(prev => prev ? { ...prev, balance_tokens: b.balance_tokens, current_plan: b.current_plan } : prev);
+    } catch {}
+  };
   useEffect(() => { fetchMe().then(setMe).catch(()=>setMe(null)); }, []);
 
   // Автоматическая проверка ключа при загрузке
@@ -255,9 +264,14 @@ const App: React.FC = () => {
              <button onClick={() => setShowGallery(true)} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
                <HistoryIcon className="w-4 h-4" /> История
              </button>
-             <div className="px-4 py-2 bg-indigo-900/20 border border-indigo-500/20 rounded-lg text-sm flex items-center gap-2">
-                <WalletIcon className="w-4 h-4 text-indigo-400" /> {me ? `$${(me.balance_cents/100).toFixed(2)}` : "106,789"}
-             </div>
+             <button
+               onClick={()=> me && setShowPricing(true)}
+               className="px-4 py-2 bg-indigo-900/20 border border-indigo-500/20 hover:border-indigo-400/40 rounded-lg text-sm flex items-center gap-2 transition"
+               title="Купить токены"
+             >
+                <WalletIcon className="w-4 h-4 text-indigo-400" />
+                {me ? `⚡ ${(me.balance_tokens || 0).toLocaleString("ru")}` : "106,789"}
+             </button>
              {me ? (
                <button
                  onClick={()=>setShowMenu(true)}
@@ -343,8 +357,17 @@ const App: React.FC = () => {
           onLogout={()=>setMe(null)}
           onOpenAdmin={()=>setShowAdmin(true)}
           onOpenHistory={()=>setShowGallery(true)}
+          onOpenPricing={()=>setShowPricing(true)}
           onLogin={()=>setShowLogin(true)}
         />
+      )}
+      {showPricing && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={()=>setShowPricing(false)}>
+          <div className="min-h-screen py-12 px-4" onClick={(e)=>e.stopPropagation()}>
+            <button onClick={()=>setShowPricing(false)} className="fixed top-4 right-4 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 text-xl">×</button>
+            <Pricing onPurchased={()=>{ refreshBalance(); }} />
+          </div>
+        </div>
       )}
     </div>
   );
