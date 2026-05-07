@@ -1,0 +1,69 @@
+name: deploy-zavod
+
+# VIDEOZAVOD2 — статический SPA на Poland (nginx root /opt/videozavod2/dist).
+# Этот workflow живёт ВНУТРИ репозитория VIDEOZAVOD2 (github.com/1tuberus/videozavod2),
+# так как у проекта свой собственный GitHub origin. Билд в CI, на прод идёт только dist/.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-zavod-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Trust host key
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Rsync dist
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          rsync -az --delete dist/ "${SERVER_USER}@${SERVER_IP}:/opt/videozavod2/dist/"
+
+      - name: Nginx reload (validate first)
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh "${SERVER_USER}@${SERVER_IP}" 'nginx -t && systemctl reload nginx'
+
+      - name: Smoke test
+        run: |
+          curl -fsS --max-time 10 -o /dev/null -w "%{http_code}\n" https://videozavod2.evotop.pro/ | grep -E '^(200|301|302)$'
+          echo "✅ deploy-zavod OK"
