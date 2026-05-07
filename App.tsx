@@ -3,7 +3,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import {Video, GoogleGenAI} from '@google/genai';
+import type {Video} from './types';
 import React, {useCallback, useEffect, useState} from 'react';
 import LoadingIndicator from './components/LoadingIndicator';
 import PromptForm from './components/PromptForm';
@@ -36,7 +36,6 @@ import {
   Resolution,
   VertexConnectionConfig,
   GalleryItem,
-  PhotoModel
 } from './types';
 
 declare global {
@@ -44,6 +43,7 @@ declare global {
     hasSelectedApiKey: () => Promise<boolean>;
     openSelectKey: () => Promise<void>;
   }
+  interface Window { aistudio?: AIStudio }
 }
 
 const GALLERY_KEY = 'video_zavod_gallery_history';

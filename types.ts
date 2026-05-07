@@ -3,7 +3,50 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import {Video} from '@google/genai';
+// Локальный аналог @google/genai Video — после миграции на HUB магистраль
+// прямые SDK-вызовы Google запрещены (Anthropic AUP / EVO_OMNI_HUB routing rules).
+export interface Video { uri: string; mimeType?: string; }
+
+// ═══════════════ HUB / Catalog typings ═══════════════
+export type ParamType = 'text'|'int'|'float'|'enum'|'bool'|'image_list'|'messages';
+export interface ParamSchema {
+  type: ParamType;
+  required?: boolean;
+  default?: any;
+  min?: number; max?: number;
+  options?: (string|number)[];
+  description?: string;
+}
+export interface CatalogEntry {
+  id: string;
+  label: string;
+  group: 'video'|'image'|'music'|'tts'|'text';
+  badge?: 'TOP'|'FAST'|'ECO'|null;
+  provider_hint: 'vertex'|'kie';
+  capabilities: Record<string, any>;
+  params: Record<string, ParamSchema>;
+  pricing: { unit: string; tokens?: number; in?: number; out?: number };
+}
+export interface Catalog {
+  video: CatalogEntry[];
+  image: CatalogEntry[];
+  music: CatalogEntry[];
+  tts:   CatalogEntry[];
+  text:  CatalogEntry[];
+}
+export type RoutingMode = 'auto'|'force_vertex'|'force_kie';
+export interface Job {
+  id: number;
+  status: 'queued'|'running'|'succeeded'|'failed';
+  job_type: 'video'|'image'|'music'|'text';
+  mode: string;
+  result_url?: string | null;
+  thumbnail_url?: string | null;
+  error_text?: string | null;
+  tokens_charged?: number;
+  created_at?: number;
+  params_input?: any;
+}
 
 export enum AppState {
   IDLE,
@@ -35,17 +78,8 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-export enum VeoModel {
-  // Official Model IDs for Veo 3.1
-  VEO_FAST = 'veo-3.1-fast-generate-preview',
-  VEO = 'veo-3.1-generate-preview',
-  VEO_LITE = 'veo-3.1-lite-generate-preview',
-}
-
-export enum PhotoModel {
-  NANO_BANANA = 'gemini-2.5-flash-image', // Flash / Nano Banana
-  NANO_BANANA_PRO = 'gemini-3-pro-image-preview', // Pro / Nano Banana Pro
-}
+// VeoModel / PhotoModel enums удалены — теперь модели берутся динамически
+// из /api/catalog (см. hooks/useCatalog.ts). Поле `model` хранит catalog id (string).
 
 export enum AspectRatio {
   LANDSCAPE = '16:9',
@@ -94,7 +128,7 @@ export interface VertexConnectionConfig {
 
 export interface GenerateVideoParams {
   prompt: string;
-  model: VeoModel;
+  model: string;
   aspectRatio: AspectRatio;
   resolution: Resolution;
   mode: GenerationMode;
@@ -110,7 +144,7 @@ export interface GenerateVideoParams {
 
 export interface GeneratePhotoParams {
   prompt: string;
-  model: PhotoModel;
+  model: string;
   aspectRatio: AspectRatio;
   quality: 'Standard' | 'HD' | '4K';
   format: 'PNG' | 'JPEG';

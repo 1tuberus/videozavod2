@@ -3,21 +3,22 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useRef } from 'react';
-import { 
-  SparklesIcon, 
-  WandIcon, 
-  PlusIcon, 
-  XMarkIcon, 
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import {
+  SparklesIcon,
+  WandIcon,
+  PlusIcon,
+  XMarkIcon,
   CopyIcon,
-  RectangleStackIcon, 
-  ChevronDownIcon, 
-  WalletIcon, 
-  AlertCircleIcon, 
+  RectangleStackIcon,
+  ChevronDownIcon,
+  WalletIcon,
+  AlertCircleIcon,
   DownloadIcon,
   ImageIcon
 } from './icons';
-import { PhotoModel, AspectRatio, GeneratePhotoParams, ImageFile } from '../types';
+import { AspectRatio, CatalogEntry, GeneratePhotoParams, ImageFile } from '../types';
+import { useCatalog } from '../hooks/useCatalog';
 
 interface PhotoGeneratorProps {
   onGenerate: (params: GeneratePhotoParams) => void;
@@ -27,13 +28,39 @@ interface PhotoGeneratorProps {
 }
 
 const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, generatedImage, error }) => {
+  const { catalog, loading: catalogLoading } = useCatalog();
+  const photoModels: CatalogEntry[] = catalog?.image || [];
+
   const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState<PhotoModel>(PhotoModel.NANO_BANANA);
+  const [model, setModel] = useState<string>('');
   const [images, setImages] = useState<ImageFile[]>([]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.PORTRAIT);
   const [quality, setQuality] = useState<'Standard' | 'HD' | '4K'>('4K');
   const [format, setFormat] = useState<'PNG' | 'JPEG'>('PNG');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedEntry = useMemo(
+    () => photoModels.find(m => m.id === model) || photoModels[0] || null,
+    [photoModels, model]
+  );
+
+  useEffect(() => {
+    if (!model && photoModels.length > 0) {
+      setModel(photoModels[0].id);
+    }
+  }, [photoModels, model]);
+
+  const aspectOptions: string[] = useMemo(() => {
+    const opts = selectedEntry?.params?.aspect_ratio?.options;
+    return Array.isArray(opts) && opts.length ? (opts as string[]) : ['9:16','16:9','1:1','3:4','4:3'];
+  }, [selectedEntry]);
+
+  useEffect(() => {
+    if (selectedEntry && aspectOptions.length && !aspectOptions.includes(aspectRatio)) {
+      const def = (selectedEntry.params?.aspect_ratio?.default as string) || aspectOptions[0];
+      setAspectRatio(def as AspectRatio);
+    }
+  }, [selectedEntry, aspectOptions, aspectRatio]);
 
   const fileToBase64 = (file: File): Promise<ImageFile> => {
     return new Promise((resolve, reject) => {
@@ -83,31 +110,42 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
           <p className="text-gray-400 text-xs">Создавай уникальные фото по референсам в AI Nano Banana</p>
         </div>
 
-        {/* Model Selection */}
+        {/* Model Selection (dynamic from /api/catalog) */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-300 ml-1">Модель</label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setModel(PhotoModel.NANO_BANANA)}
-              className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all
-                ${model === PhotoModel.NANO_BANANA 
-                  ? 'bg-[#1a1a24] border-indigo-500/50 text-white shadow-[0_0_10px_rgba(99,102,241,0.2)]' 
-                  : 'bg-[#121216] border-white/5 text-gray-400 hover:bg-[#1a1a1f]'}
-              `}
-            >
-              Nano Banana
-            </button>
-            <button
-              onClick={() => setModel(PhotoModel.NANO_BANANA_PRO)}
-              className={`flex-1 py-3 px-4 rounded-xl border text-sm font-bold transition-all relative overflow-hidden
-                ${model === PhotoModel.NANO_BANANA_PRO
-                  ? 'bg-[#1a1a24] border-purple-500/50 text-white shadow-[0_0_10px_rgba(168,85,247,0.2)]' 
-                  : 'bg-[#121216] border-white/5 text-gray-400 hover:bg-[#1a1a1f]'}
-              `}
-            >
-              Nano Banana Pro
-            </button>
-          </div>
+          <label className="text-xs font-bold text-gray-300 ml-1">
+            Модель {selectedEntry ? `· ${selectedEntry.pricing?.tokens ?? '?'} токенов / ${selectedEntry.pricing?.unit ?? 'image'}` : ''}
+          </label>
+          {catalogLoading && !photoModels.length ? (
+            <div className="text-xs text-gray-500 px-1">Загрузка каталога…</div>
+          ) : photoModels.length === 0 ? (
+            <div className="text-xs text-amber-500/80 px-1">Каталог недоступен.</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {photoModels.map(entry => {
+                const active = entry.id === model;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => setModel(entry.id)}
+                    className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all relative overflow-hidden text-left
+                      ${active
+                        ? 'bg-[#1a1a24] border-indigo-500/50 text-white shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                        : 'bg-[#121216] border-white/5 text-gray-400 hover:bg-[#1a1a1f]'}
+                    `}
+                  >
+                    <div className="text-xs font-semibold leading-tight">{entry.label}</div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-[9px] uppercase tracking-wide text-gray-500">{entry.provider_hint}</span>
+                      {entry.badge && (
+                        <span className="text-[9px] uppercase tracking-wide px-1 rounded bg-violet-500/10 text-violet-300">{entry.badge}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Prompt */}
@@ -173,16 +211,14 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
             <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-300 ml-1">Соотношение сторон</label>
                 <div className="relative">
-                    <select 
+                    <select
                         value={aspectRatio}
                         onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
                         className="w-full bg-[#121216] border border-white/10 rounded-xl p-3 pr-10 text-sm text-white appearance-none focus:outline-none focus:border-indigo-500/50"
                     >
-                        <option value={AspectRatio.PORTRAIT}>9:16 (Vertical)</option>
-                        <option value={AspectRatio.LANDSCAPE}>16:9 (Horizontal)</option>
-                        <option value={AspectRatio.SQUARE}>1:1 (Square)</option>
-                        <option value={AspectRatio.R_3_4}>3:4</option>
-                        <option value={AspectRatio.R_4_3}>4:3</option>
+                        {aspectOptions.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
                     </select>
                     <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                 </div>
@@ -226,11 +262,14 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
 
         <div className="border-t border-white/5 pt-4">
             <div className="flex justify-between items-center mb-4">
-                <span className="text-xs text-gray-500">Стоимость: <span className="text-white font-bold">24 токенов</span></span>
+                <span className="text-xs text-gray-500">
+                  Стоимость: <span className="text-white font-bold">~{selectedEntry?.pricing?.tokens ?? '?'} токенов</span>
+                  {selectedEntry && <span className="text-gray-600 ml-2">· {selectedEntry.provider_hint}</span>}
+                </span>
             </div>
             <button
                 onClick={handleSubmit}
-                disabled={isLoading || !prompt}
+                disabled={isLoading || !prompt || !model}
                 className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isLoading ? (

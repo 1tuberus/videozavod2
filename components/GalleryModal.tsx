@@ -16,7 +16,8 @@ import {
   AlertCircleIcon,
   PlayIcon
 } from './icons';
-import { GalleryItem, GenerationMode, VeoModel, AspectRatio } from '../types';
+import { GalleryItem, GenerationMode, AspectRatio } from '../types';
+import { useCatalog } from '../hooks/useCatalog';
 
 interface GalleryModalProps {
   isOpen: boolean;
@@ -26,9 +27,11 @@ interface GalleryModalProps {
 }
 
 const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, items, onDeleteItem }) => {
+  const { catalog } = useCatalog();
   const [filterType, setFilterType] = useState<string>('all');
   const [filterModel, setFilterModel] = useState<string>('all');
   const [filterRatio, setFilterRatio] = useState<string>('all');
+  const allModels = [...(catalog?.video || []), ...(catalog?.image || [])];
   
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
@@ -108,9 +111,9 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, items, onD
                     className="bg-[#1a1a1f] border border-white/10 text-gray-300 text-sm rounded-lg px-4 py-2.5 outline-none focus:border-violet-500/50 appearance-none min-w-[140px]"
                 >
                     <option value="all">Все модели</option>
-                    <option value={VeoModel.VEO_FAST}>Veo Fast</option>
-                    <option value={VeoModel.VEO}>Veo Pro</option>
-                    <option value={VeoModel.VEO_LITE}>Veo Lite</option>
+                    {allModels.map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
                 </select>
 
                 <select 

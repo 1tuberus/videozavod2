@@ -10,7 +10,6 @@
     "start": "vite preview --host 127.0.0.1 --port 8080"
   },
   "dependencies": {
-    "@google/genai": "^1.22.0",
     "framer-motion": "^12.38.0",
     "gifshot": "^0.4.5",
     "lucide-react": "^0.408.0",
