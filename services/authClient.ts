@@ -1,5 +1,5 @@
 // Auth + admin client. Stores session token in localStorage; sends as Bearer.
-const HUB = (import.meta as any).env?.VITE_HUB_URL || "https://hub.evotop.pro";
+const HUB = (import.meta as any).env?.VITE_HUB_URL || "https://gemini.evotop.pro";
 const TOKEN_KEY = "vz2_session_token";
 
 export type Role = "owner" | "admin" | "user";
