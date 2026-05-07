@@ -16,6 +16,7 @@ import {
   VideoStyle,
 } from '../types';
 import { useCatalog } from '../hooks/useCatalog';
+import { usePricing, estimateFromMatrix, perUnitTokens } from '../hooks/usePricing';
 import { enhancePromptWithInternet } from '../services/geminiService';
 import {
   ArrowRightIcon,
@@ -146,14 +147,28 @@ const PromptForm: React.FC<PromptFormProps> = ({
 
   // Total cost for this generation (per-unit × duration). Default video duration = 8s.
   const VIDEO_DEFAULT_DURATION = 8;
+  const { matrix: pricingMatrix } = usePricing();
   const totalTokens = useMemo(() => {
     if (!selectedEntry) return 0;
+    const unit = (selectedEntry.pricing?.unit as any) || 'sec';
+    // Prefer dynamic pricing_matrix (admin-edited, source of truth)
+    const fromMatrix = estimateFromMatrix(pricingMatrix, {
+      modelId: selectedEntry.id,
+      unit,
+      duration: VIDEO_DEFAULT_DURATION,
+      count: 1,
+    });
+    if (fromMatrix != null) return fromMatrix;
+    // Fallback: catalog pricing.tokens (which already reflects overrides server-side)
     const perUnit = selectedEntry.pricing?.tokens ?? 0;
-    const unit = selectedEntry.pricing?.unit;
     if (unit === 'sec') return perUnit * VIDEO_DEFAULT_DURATION;
-    if (unit === 'img') return perUnit;
     return perUnit;
-  }, [selectedEntry]);
+  }, [selectedEntry, pricingMatrix]);
+  const perUnitDisplay = useMemo(() => {
+    if (!selectedEntry) return null;
+    const fromMatrix = perUnitTokens(pricingMatrix, selectedEntry.id);
+    return fromMatrix ?? selectedEntry.pricing?.tokens ?? null;
+  }, [selectedEntry, pricingMatrix]);
 
   // Aspect/resolution options derived from selected model's params (capabilities-driven)
   const aspectOptions: string[] = useMemo(() => {
@@ -343,7 +358,9 @@ const PromptForm: React.FC<PromptFormProps> = ({
       {/* 1. Model Selection (dynamic from /api/catalog) */}
       <div className="space-y-3">
         <label className="text-gray-400 text-sm font-medium ml-1">
-          AI модель {selectedEntry ? `· ${selectedEntry.pricing?.tokens ?? '?'} ток./${selectedEntry.pricing?.unit ?? 'job'} · итого ~${totalTokens} ток. за ${VIDEO_DEFAULT_DURATION} сек` : ''}
+          AI модель {selectedEntry ? (totalTokens > 0
+            ? `· ${perUnitDisplay ?? '?'} ток./${selectedEntry.pricing?.unit ?? 'job'} · итого ~${totalTokens} ток. за ${VIDEO_DEFAULT_DURATION} сек`
+            : '· цена будет рассчитана при генерации') : ''}
         </label>
         {catalogLoading && !videoModels.length ? (
           <div className="text-xs text-gray-500 px-1">Загрузка каталога…</div>

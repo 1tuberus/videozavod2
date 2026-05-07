@@ -82,6 +82,29 @@ export async function getCatalog(): Promise<Catalog> {
   return j.models;
 }
 
+// ─── PUBLIC PRICING MATRIX (no-auth) ───────────────────────────────────────
+// Returns active rows from admin pricing_matrix. Frontend uses this to compute
+// estimates that match backend exactly. NEVER trust this for actual charging —
+// the hub re-validates server-side at /api/jobs/generate.
+export interface PublicPricingRow {
+  category: "Video" | "Photo" | "Audio" | "Text";
+  model_id: string;
+  base_rate: number;          // USD per unit (sec/img/track)
+  res_multiplier_720: number; // multiplier when resolution=720p
+  res_multiplier_1080: number;// multiplier when resolution=1080p
+  audio_fixed_price: number;  // USD added when audio enabled (per sec)
+  markup: number;             // global multiplier
+}
+export async function getPublicPricing(): Promise<{ rows: PublicPricingRow[]; updated_at: number } | null> {
+  try {
+    const r = await fetch(`${HUB_URL}/api/pricing/public`, { method: "GET" });
+    if (!r.ok) return null;
+    const j: any = await r.json();
+    if (!j?.ok) return null;
+    return { rows: j.rows || [], updated_at: j.updated_at || Date.now() };
+  } catch { return null; }
+}
+
 // ─── ESTIMATE ──────────────────────────────────────────────────────────────
 export async function estimate(mode: string, params: any) {
   return jpost<{ ok: true; mode: string; tokens: number; balance: number }>(

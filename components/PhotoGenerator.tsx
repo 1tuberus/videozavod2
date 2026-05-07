@@ -19,6 +19,7 @@ import {
 } from './icons';
 import { AspectRatio, CatalogEntry, GeneratePhotoParams, ImageFile } from '../types';
 import { useCatalog } from '../hooks/useCatalog';
+import { usePricing, estimateFromMatrix } from '../hooks/usePricing';
 
 interface PhotoGeneratorProps {
   onGenerate: (params: GeneratePhotoParams) => void;
@@ -50,11 +51,18 @@ const PhotoGenerator: React.FC<PhotoGeneratorProps> = ({ onGenerate, isLoading, 
     }
   }, [photoModels, model]);
 
-  // Total cost (для image — за 1 фото, n=1 в текущем UI)
+  // Total cost — pricing_matrix is source of truth, fallback to catalog
+  const { matrix: pricingMatrix } = usePricing();
   const totalTokens = useMemo(() => {
     if (!selectedEntry) return 0;
+    const fromMatrix = estimateFromMatrix(pricingMatrix, {
+      modelId: selectedEntry.id,
+      unit: 'img',
+      count: 1,
+    });
+    if (fromMatrix != null) return fromMatrix;
     return selectedEntry.pricing?.tokens ?? 0;
-  }, [selectedEntry]);
+  }, [selectedEntry, pricingMatrix]);
 
   const aspectOptions: string[] = useMemo(() => {
     const opts = selectedEntry?.params?.aspect_ratio?.options;
