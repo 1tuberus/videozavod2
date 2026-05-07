@@ -17,6 +17,9 @@ import GalleryModal from './components/GalleryModal';
 import CheckpointManager from './components/CheckpointManager';
 import Navigation from './components/Navigation';
 import ConnectionsTab from './components/ConnectionsTab';
+import AdminPanel from './components/AdminPanel';
+import LoginModal from './components/LoginModal';
+import {fetchMe, logout, Me} from './services/authClient';
 import {generateVideo, generateImage} from './services/geminiService';
 import {priceVideo} from './services/hubClient';
 import {PlusIcon, WalletIcon, ActivityIcon, HistoryIcon, AlertCircleIcon, KeyIcon} from './components/icons';
@@ -100,6 +103,10 @@ const App: React.FC = () => {
   const [showGallery, setShowGallery] = useState(false);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [generationLogs, setGenerationLogs] = useState<any[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  useEffect(() => { fetchMe().then(setMe).catch(()=>setMe(null)); }, []);
 
   // Автоматическая проверка ключа при загрузке
   useEffect(() => {
@@ -247,8 +254,18 @@ const App: React.FC = () => {
                <HistoryIcon className="w-4 h-4" /> История
              </button>
              <div className="px-4 py-2 bg-indigo-900/20 border border-indigo-500/20 rounded-lg text-sm flex items-center gap-2">
-                <WalletIcon className="w-4 h-4 text-indigo-400" /> 106,789
+                <WalletIcon className="w-4 h-4 text-indigo-400" /> {me ? `$${(me.balance_cents/100).toFixed(2)}` : "106,789"}
              </div>
+             {me && (me.role === "admin" || me.role === "owner") && (
+               <button onClick={()=>setShowAdmin(true)} className="px-3 py-2 text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 rounded-lg shadow-[0_0_12px_rgba(139,92,246,0.4)]">
+                 ⚙ Admin
+               </button>
+             )}
+             {me ? (
+               <button onClick={async()=>{ await logout(); setMe(null); }} className="text-xs text-gray-400 hover:text-white px-2 py-1">{me.email.split("@")[0]} ✕</button>
+             ) : (
+               <button onClick={()=>setShowLogin(true)} className="px-3 py-2 text-xs bg-white/5 hover:bg-white/10 rounded-lg border border-white/10">Войти</button>
+             )}
           </div>
       </header>
 
@@ -314,6 +331,8 @@ const App: React.FC = () => {
       <DeploymentGuideModal isOpen={showDeploymentGuide} onClose={() => setShowDeploymentGuide(false)} config={connectionConfig} onConfigChange={setConnectionConfig} onRunDiagnostics={() => setShowDiagnostics(true)} />
       <GalleryModal isOpen={showGallery} onClose={() => setShowGallery(false)} items={galleryItems} onDeleteItem={(id) => setGalleryItems(items => items.filter(i => i.id !== id))} />
       <CheckpointManager isOpen={showCheckpoints} onClose={() => setShowCheckpoints(false)} currentConfig={connectionConfig} currentGallery={galleryItems} onRestoreConfig={setConnectionConfig} />
+      {showLogin && <LoginModal onSuccess={(u)=>{ setMe(u); setShowLogin(false); }} onClose={()=>setShowLogin(false)} />}
+      {showAdmin && me && (me.role === "admin" || me.role === "owner") && <AdminPanel me={me} onClose={()=>setShowAdmin(false)} />}
     </div>
   );
 };
