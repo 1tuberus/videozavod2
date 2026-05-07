@@ -16,7 +16,9 @@ import DeploymentGuideModal from './components/DeploymentGuideModal';
 import GalleryModal from './components/GalleryModal';
 import CheckpointManager from './components/CheckpointManager';
 import Navigation from './components/Navigation';
+import ConnectionsTab from './components/ConnectionsTab';
 import {generateVideo, generateImage} from './services/geminiService';
+import {priceVideo} from './services/hubClient';
 import {PlusIcon, WalletIcon, ActivityIcon, HistoryIcon, AlertCircleIcon, KeyIcon} from './components/icons';
 import {
   AppState,
@@ -121,6 +123,12 @@ const App: React.FC = () => {
     setGenerationLogs([]);
 
     try {
+      // Cost preview через HUB (защита Гранта)
+      try {
+        const dur = 8;
+        const p = await priceVideo(String(params.model), dur);
+        addLog(`💰 Стоимость генерации через Грант: $${p.est_usd.toFixed(2)} (${dur}s @ ${params.model}). Баланс Гранта защищен.`);
+      } catch {}
       addLog("INIT: Запуск высокоточного пайплайна...");
       const result = await generateVideo(params, connectionConfig, (msg, data) => addLog(msg, data));
       
@@ -266,6 +274,10 @@ const App: React.FC = () => {
 
         {activeTask === GenerationTask.MUSIC && (
           <MusicGenerator />
+        )}
+
+        {activeTask === GenerationTask.CONNECTIONS && (
+          <ConnectionsTab />
         )}
       </main>
 

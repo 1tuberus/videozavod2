@@ -18,6 +18,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTask, onTaskChange }) => 
     { id: GenerationTask.PHOTO, label: 'Фото', icon: <CameraIcon className="w-4 h-4" /> },
     { id: GenerationTask.MUSIC, label: 'Музыка', icon: <MusicIcon className="w-4 h-4" /> },
     { id: GenerationTask.TEXT, label: 'Текст', icon: <TextIcon className="w-4 h-4" /> },
+    { id: GenerationTask.CONNECTIONS, label: 'Connections', icon: <span className="w-4 h-4 inline-block leading-none">⚡</span> },
   ];
 
   return (

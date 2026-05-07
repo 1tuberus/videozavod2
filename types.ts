@@ -16,7 +16,8 @@ export enum GenerationTask {
   VIDEO = 'video',
   PHOTO = 'photo',
   MUSIC = 'music',
-  TEXT = 'text'
+  TEXT = 'text',
+  CONNECTIONS = 'connections'
 }
 
 export interface AIRole {
