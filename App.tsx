@@ -21,6 +21,7 @@ import AdminPanel from './components/AdminPanel';
 import LoginModal from './components/LoginModal';
 import UserMenu from './components/UserMenu';
 import Pricing from './components/Pricing';
+import { TermsPage, PrivacyPage, RefundPage } from './components/LegalPage';
 import { fetchBalance } from './services/billingClient';
 import {fetchMe, logout, Me} from './services/authClient';
 import {generateVideo, generateImage} from './services/geminiService';
@@ -48,6 +49,12 @@ declare global {
 const GALLERY_KEY = 'video_zavod_gallery_history';
 
 const App: React.FC = () => {
+  // Simple path-based legal pages router (renders before main app)
+  const path = typeof window !== "undefined" ? window.location.pathname : "/";
+  if (path === "/legal/terms")   return <TermsPage />;
+  if (path === "/legal/privacy") return <PrivacyPage />;
+  if (path === "/legal/refund")  return <RefundPage />;
+
   const [activeTask, setActiveTask] = useState<GenerationTask>(GenerationTask.VIDEO);
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   

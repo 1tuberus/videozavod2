@@ -29,6 +29,11 @@ export async function login(email: string, password: string): Promise<Me> {
   setToken(j.token);
   return j.user;
 }
+export async function register(email: string, password: string): Promise<{ user: Me; welcome_tokens: number }> {
+  const j = await req("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+  setToken(j.token);
+  return { user: j.user, welcome_tokens: j.welcome_tokens || 0 };
+}
 export async function logout(): Promise<void> {
   try { await req("/api/auth/logout", { method: "POST" }); } catch {}
   setToken("");
