@@ -64,9 +64,36 @@ const App: React.FC = () => {
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() => {
     try {
       const saved = localStorage.getItem(GALLERY_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const arr = JSON.parse(saved) as GalleryItem[];
+      // Помечаем blob: URL'ы как утерянные (они не выживают перезагрузку).
+      return arr.map((it) => {
+        const u = (it as any).videoUrl || (it as any).imageUrl || "";
+        if (u.startsWith?.("blob:")) {
+          const cleaned: any = { ...it };
+          if (cleaned.videoUrl) { cleaned.videoUrl = ""; cleaned._expired = true; }
+          if (cleaned.imageUrl) { cleaned.imageUrl = ""; cleaned._expired = true; }
+          return cleaned;
+        }
+        return it;
+      });
     } catch { return []; }
   });
+
+  // Persist gallery to localStorage (без blob: URL, чтобы не раздувать).
+  useEffect(() => {
+    try {
+      const cap = galleryItems.slice(0, 30); // ограничиваем 30 последними
+      const safe = cap.map((it: any) => {
+        const out: any = { ...it };
+        // base64 data URLs тяжёлые; для видео не сохраняем превью, только мета.
+        if (out.videoUrl?.startsWith?.("blob:")) out.videoUrl = "";
+        if (out.imageUrl?.startsWith?.("blob:")) out.imageUrl = "";
+        return out;
+      });
+      localStorage.setItem(GALLERY_KEY, JSON.stringify(safe));
+    } catch (e) { console.warn("gallery persist failed", e); }
+  }, [galleryItems]);
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showDeploymentGuide, setShowDeploymentGuide] = useState(false);
@@ -124,14 +151,16 @@ const App: React.FC = () => {
 
     try {
       // Cost preview через HUB (защита Гранта)
+      let estUsd = 0;
       try {
         const dur = 8;
         const p = await priceVideo(String(params.model), dur);
+        estUsd = p.est_usd;
         addLog(`💰 Стоимость генерации через Грант: $${p.est_usd.toFixed(2)} (${dur}s @ ${params.model}). Баланс Гранта защищен.`);
       } catch {}
       addLog("INIT: Запуск высокоточного пайплайна...");
       const result = await generateVideo(params, connectionConfig, (msg, data) => addLog(msg, data));
-      
+
       setVideoUrl(result.objectUrl);
       setAppState(AppState.SUCCESS);
 
@@ -142,7 +171,7 @@ const App: React.FC = () => {
           task: GenerationTask.VIDEO,
           params: params,
           videoUrl: result.objectUrl,
-          cost: 60
+          cost: estUsd
       };
       setGalleryItems(prev => [newItem, ...prev]);
 
@@ -187,7 +216,7 @@ const App: React.FC = () => {
           task: GenerationTask.PHOTO,
           params: params,
           imageUrl: result.imageUrl,
-          cost: 24
+          cost: 0.04
       }, ...prev]);
     } catch (error: any) {
       setPhotoError(error.message);
