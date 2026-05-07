@@ -91,13 +91,14 @@ export async function estimate(mode: string, params: any) {
 
 // ─── MEDIA (async, BullMQ-backed) ──────────────────────────────────────────
 export async function startMedia(mode: string, params: any) {
+  // ВАЖНО: job_id — это UUID (string), не numeric. Сервер генерит crypto.randomUUID().
   return jpost<{
-    ok: true; job_id: number; bull_job_id: string;
+    ok: true; job_id: string; bull_job_id: string;
     provider: string; route: string; tokens_charged: number; poll_url: string;
   }>("/api/media/generate", { mode, params });
 }
 
-export async function getJob(id: number): Promise<Job> {
+export async function getJob(id: string | number): Promise<Job> {
   const j = await jget<{ ok: true; job: Job }>(`/api/jobs/${id}`);
   return j.job;
 }
@@ -109,7 +110,7 @@ export async function listJobs(filter: { job_type?: string; status?: string; lim
 }
 
 export async function pollJob(
-  id: number,
+  id: string | number,
   opts: { intervalMs?: number; timeoutMs?: number; onTick?: (job: Job) => void } = {}
 ): Promise<Job> {
   const interval = opts.intervalMs ?? 3000;
@@ -285,11 +286,11 @@ export async function hubStartVideo(args: {
   };
 }
 
-// hubPollVideo → /api/jobs/:id (single tick); UI wraps в loop
+// hubPollVideo → /api/jobs/:id (single tick); UI wraps в loop.
+// opName — это UUID job'а (server генерит crypto.randomUUID()); ВАЖНО: НЕ кастуем в Number.
 export async function hubPollVideo(opName: string) {
-  const id = Number(opName);
-  if (!Number.isFinite(id)) throw new Error("invalid_operation_name");
-  const job = await getJob(id);
+  if (!opName || typeof opName !== "string") throw new Error("invalid_operation_name");
+  const job = await getJob(opName);
   if (job.status === "queued" || job.status === "running") {
     return { ok: true, done: false } as { ok: true; done: false };
   }

@@ -36,7 +36,7 @@ export interface Catalog {
 }
 export type RoutingMode = 'auto'|'force_vertex'|'force_kie';
 export interface Job {
-  id: number;
+  id: string;  // UUID, server: crypto.randomUUID()
   status: 'queued'|'running'|'succeeded'|'failed';
   job_type: 'video'|'image'|'music'|'text';
   mode: string;
